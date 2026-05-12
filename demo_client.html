@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ZenTask Demo Client</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; background: #f4f7f6; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        input { width: 100%; padding: 0.5rem; margin: 0.5rem 0; box-sizing: border-box; }
+        button { background: #3b82f6; color: white; border: none; padding: 0.75rem; width: 100%; border-radius: 4px; cursor: pointer; }
+        #status { margin-top: 1rem; padding: 1rem; border-radius: 4px; display: none; }
+        .success { background: #dcfce7; color: #166534; display: block !important; }
+        .error { background: #fee2e2; color: #991b1b; display: block !important; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>ZenTask API Demo</h1>
+        <p>Prueba la conexión con el servidor Django (Puerto 8001)</p>
+        <input type="text" id="user" placeholder="Usuario (admin)" value="admin">
+        <input type="password" id="pass" placeholder="Contraseña (admin)" value="admin">
+        <button onclick="testLogin()">Probar Inicio de Sesión</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function testLogin() {
+            const status = document.getElementById('status');
+            status.className = '';
+            status.innerText = 'Conectando...';
+            
+            try {
+                const response = await fetch('http://localhost:8001/api/token/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('user').value,
+                        password: document.getElementById('pass').value
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    status.className = 'success';
+                    status.innerText = '¡Éxito! Token recibido: ' + data.access.substring(0, 20) + '...';
+                } else {
+                    status.className = 'error';
+                    status.innerText = 'Error: ' + (data.detail || 'Credenciales incorrectas');
+                }
+            } catch (e) {
+                status.className = 'error';
+                status.innerText = 'Error de conexión: Asegúrate de que el servidor Django esté corriendo en el puerto 8001.';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+/* ============================================================
+   ZenTask — Design Tokens
+   Fuente única de verdad para todos los valores de diseño.
+   Para cambiar el look global, solo editar este archivo.
+   ============================================================ */
+
+:root {
+  /* ── Paleta de color (nueva: violeta profundo / teal / coral) ── */
+  --color-primary:        #7c3aed;   /* Violeta profundo */
+  --color-primary-light:  #a78bfa;   /* Violeta claro */
+  --color-primary-dark:   #5b21b6;   /* Violeta oscuro */
+  --color-primary-ghost:  rgba(124, 58, 237, 0.12);
+
+  --color-success:        #0d9488;   /* Teal */
+  --color-success-light:  #5eead4;
+  --color-success-ghost:  rgba(13, 148, 136, 0.12);
+
+  --color-warning:        #f97316;   /* Coral/naranja */
+  --color-warning-light:  #fdba74;
+  --color-warning-ghost:  rgba(249, 115, 22, 0.12);
+
+  --color-danger:         #e11d48;   /* Rosa intenso */
+  --color-danger-light:   #fda4af;
+  --color-danger-ghost:   rgba(225, 29, 72, 0.12);
+
+  /* ── Superficies (modo oscuro por defecto) ── */
+  --surface-bg:           #080c14;
+  --surface-1:            rgba(18, 24, 40, 0.95);
+  --surface-2:            rgba(28, 36, 58, 0.90);
+  --surface-border:       rgba(124, 58, 237, 0.18);
+  --surface-border-solid: #1e2a45;
+
+  /* ── Texto ── */
+  --text-primary:   #f0f4ff;
+  --text-secondary: #94a3b8;
+  --text-muted:     #475569;
+
+  /* ── Alias semánticos (usados en componentes) ── */
+  --primary:        var(--color-primary);
+  --primary-hover:  var(--color-primary-dark);
+  --success:        var(--color-success);
+  --danger:         var(--color-danger);
+  --warning:        var(--color-warning);
+  --bg:             var(--surface-bg);
+  --fg:             var(--text-primary);
+  --card-bg:        var(--surface-1);
+  --border:         var(--surface-border-solid);
+  --muted:          var(--text-secondary);
+
+  /* ── Tipografía ── */
+  --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.875rem;   /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+  --text-4xl:  2.25rem;    /* 36px */
+  --text-5xl:  3rem;       /* 48px */
+
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-extrabold:800;
+  --weight-black:    900;
+
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed:1.625;
+
+  /* ── Espaciado (escala 4px) ── */
+  --space-1:  0.25rem;   /*  4px */
+  --space-2:  0.5rem;    /*  8px */
+  --space-3:  0.75rem;   /* 12px */
+  --space-4:  1rem;      /* 16px */
+  --space-5:  1.25rem;   /* 20px */
+  --space-6:  1.5rem;    /* 24px */
+  --space-8:  2rem;      /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  --space-16: 4rem;      /* 64px */
+  --space-20: 5rem;      /* 80px */
+
+  /* ── Radios de borde ── */
+  --radius-sm:   8px;
+  --radius:      14px;
+  --radius-lg:   20px;
+  --radius-xl:   28px;
+  --radius-full: 9999px;
+
+  /* ── Sombras ── */
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow:     0 4px 16px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg:  0 20px 40px rgba(0, 0, 0, 0.55), 0 8px 16px rgba(0, 0, 0, 0.35);
+  --shadow-primary: 0 4px 20px rgba(124, 58, 237, 0.4);
+  --shadow-glow:    0 0 40px rgba(124, 58, 237, 0.15);
+
+  /* ── Glass / Blur ── */
+  --glass:        blur(12px);
+  --glass-strong: blur(20px);
+
+  /* ── Transiciones ── */
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:    cubic-bezier(0.4, 0, 1, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast:   150ms;
+  --duration-base:   220ms;
+  --duration-slow:   380ms;
+  --transition:      var(--duration-base) var(--ease-inout);
+
+  /* ── Gradientes ── */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, #a855f7 100%);
+  --gradient-hero:    linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 50%, #4c1d95 100%);
+  --gradient-teal:    linear-gradient(135deg, var(--color-success) 0%, #0284c7 100%);
+  --gradient-coral:   linear-gradient(135deg, var(--color-warning) 0%, #ef4444 100%);
+  --gradient-text:    linear-gradient(135deg, var(--color-primary-light) 0%, #e879f9 100%);
+
+  /* ── Dimensiones de layout ── */
+  --sidebar-width:         260px;
+  --sidebar-width-collapsed: 80px;
+  --topbar-height:         72px;
+  --page-max-width:        960px;
+}
+
+/* ── Modo claro ── */
+[data-theme='light'] {
+  --surface-bg:           #f4f0ff;
+  --surface-1:            rgba(255, 255, 255, 0.92);
+  --surface-2:            rgba(237, 233, 254, 0.80);
+  --surface-border:       rgba(124, 58, 237, 0.14);
+  --surface-border-solid: #ddd6fe;
+
+  --text-primary:   #1e1b4b;
+  --text-secondary: #5b21b6;
+  --text-muted:     #7c3aed;
+
+  --shadow:    0 4px 16px rgba(124, 58, 237, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 40px rgba(124, 58, 237, 0.15), 0 8px 16px rgba(0, 0, 0, 0.08);
+  --shadow-primary: 0 4px 20px rgba(124, 58, 237, 0.25);
+  --shadow-glow:    0 0 40px rgba(124, 58, 237, 0.08);
+}
