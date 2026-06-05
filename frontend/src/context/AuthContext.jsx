@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 
+import { API_BASE } from '../utils';
+
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -20,7 +22,7 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   const login = async (username, password) => {
-    const response = await axios.post('/api/token/', { username, password });
+    const response = await axios.post(`${API_BASE}/token/`, { username, password });
     const { access, refresh } = response.data;
     localStorage.setItem('token', access);
     localStorage.setItem('refresh', refresh);
@@ -29,8 +31,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (username, email, password) => {
-    // Registrar el usuario en la base de datos (ruta correcta de la API con barra final)
-    await axios.post('/api/register/', { username, email, password });
+    // Registrar el usuario en la base de datos (ruta correcta de la API con barra final y API_BASE)
+    await axios.post(`${API_BASE}/register/`, { username, email, password });
     // Iniciar sesión automáticamente después de registrarse
     return await login(username, password);
   };
