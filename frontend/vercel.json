@@ -1,7 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "TU_URL_DE_BACKEND_PUBLICO/api/$1" },
-    { "source": "/ws/(.*)", "destination": "TU_URL_DE_BACKEND_PUBLICO/ws/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

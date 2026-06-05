@@ -6,7 +6,9 @@ import axios from 'axios';
 import { addToQueue } from './lib/offlineQueue';
 
 // ── URL base de la API ──────────────────────────────────────────────────────
-export const API_BASE = '/api';
+// En desarrollo local: usa '/api' (proxy de Vite → http://localhost:8000/api)
+// En producción (Vercel): usa VITE_API_URL → https://tu-backend.railway.app/api
+export const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 // ── Días de la semana ───────────────────────────────────────────────────────
 export const DAYS = [
