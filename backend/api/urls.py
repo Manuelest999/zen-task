@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import (
 )
 from .views import (
     CategoryViewSet, TaskViewSet, RoutineViewSet, 
-    GoalViewSet, ProgressLogViewSet, UserViewSet
+    GoalViewSet, ProgressLogViewSet, UserRegisterView
 )
 
 router = DefaultRouter()
@@ -18,7 +18,7 @@ router.register(r'progress', ProgressLogViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('register/', UserViewSet.as_view({'post': 'register'}), name='register'),
+    path('register/', UserRegisterView.as_view(), name='register'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
