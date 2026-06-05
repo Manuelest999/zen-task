@@ -24,7 +24,7 @@ export const SyncProvider = ({ children }) => {
       try {
         await axios({
           method: item.method,
-          url: `${API_BASE.replace('/api', '')}${item.url}`, // API_BASE is http://localhost:8001/api, item.url might be /api/tasks/
+          url: `${API_BASE}${item.url}`, // Correctly use /api/tasks/
           data: item.data
         });
         removeFromQueue(item.id);

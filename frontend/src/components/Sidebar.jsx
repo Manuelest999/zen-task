@@ -15,7 +15,7 @@ const NAV_ITEMS = [
 ];
 
 const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth();
   const location = useLocation();
