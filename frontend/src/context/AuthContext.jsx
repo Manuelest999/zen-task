@@ -28,6 +28,13 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   };
 
+  const register = async (username, email, password) => {
+    // Registrar el usuario en la base de datos (ruta correcta de la API)
+    await axios.post('/api/register/', { username, email, password });
+    // Iniciar sesión automáticamente después de registrarse
+    return await login(username, password);
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refresh');
@@ -36,7 +43,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, register, loading }}>
       {children}
     </AuthContext.Provider>
   );
