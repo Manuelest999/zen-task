@@ -14,6 +14,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Enviando formulario de registro...", { username, email });
     setError('');
 
     if (!username || !email || !password || !confirmPassword) {
@@ -28,17 +29,20 @@ const Register = () => {
 
     setLoading(true);
     try {
+      console.log("Llamando a la función register del AuthContext...");
       await register(username, email, password);
+      console.log("Registro exitoso, redirigiendo...");
       navigate('/');
     } catch (err) {
+      console.error("Error capturado en el registro:", err);
       if (err.response && err.response.data) {
-        // Mostrar el primer error legible del backend si está disponible
         const data = err.response.data;
+        console.log("Datos del error de la API:", data);
         const firstErrorKey = Object.keys(data)[0];
         const errorMsg = data[firstErrorKey];
         setError(Array.isArray(errorMsg) ? errorMsg[0] : errorMsg);
       } else {
-        setError('Ocurrió un error al registrar el usuario.');
+        setError(err.message || 'Ocurrió un error al registrar el usuario.');
       }
     } finally {
       setLoading(false);
@@ -80,11 +84,13 @@ const Register = () => {
             <label className="form-label" htmlFor="register-username">Usuario</label>
             <input
               id="register-username"
+              type="text"
               placeholder="tu_usuario"
               value={username}
               onChange={e => setUsername(e.target.value)}
               autoComplete="username"
               required
+              style={{ display: 'block', width: '100%' }}
             />
           </div>
 
@@ -98,6 +104,7 @@ const Register = () => {
               onChange={e => setEmail(e.target.value)}
               autoComplete="email"
               required
+              style={{ display: 'block', width: '100%' }}
             />
           </div>
 
@@ -111,6 +118,7 @@ const Register = () => {
               onChange={e => setPassword(e.target.value)}
               autoComplete="new-password"
               required
+              style={{ display: 'block', width: '100%' }}
             />
           </div>
 
@@ -124,13 +132,14 @@ const Register = () => {
               onChange={e => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
               required
+              style={{ display: 'block', width: '100%' }}
             />
           </div>
 
           <button 
             type="submit" 
             className="btn btn-primary w-full" 
-            style={{ justifyContent: 'center', padding: 'var(--space-4)' }}
+            style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }}
             disabled={loading}
           >
             {loading ? 'Creando cuenta...' : 'Registrarse'}
