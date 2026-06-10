@@ -6,6 +6,7 @@ import {
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE, formatTime12h, formatDate, DAYS, todayISO, apiCall } from '../utils';
+import { Trophy } from 'lucide-react';
 import SectionHeader from '../components/ui/SectionHeader';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -283,13 +284,37 @@ const Dashboard = () => {
 
   const toggleSection = (type) => setQuickAdd(quickAdd === type ? null : type);
 
+  // Helper: check if a routine is already completed today
+  const isCompletedToday = (routineId) =>
+    data.logs.some(l =>
+      l.content_type === 'routine' &&
+      l.object_id === routineId &&
+      l.date === todayISO()
+    );
+
+  // Handle marking routine as complete today (prevent duplicates)
+  const handleRoutineDone = async (routine) => {
+    if (isCompletedToday(routine.id)) return;
+    try {
+      await apiCall('POST', '/progress/', {
+        content_type: 'routine', object_id: routine.id, date: todayISO(), value: 1,
+      });
+      fetchData();
+    } catch (e) {
+      // unique_together constraint — ya estaba registrado, sólo refrescamos
+      fetchData();
+    }
+  };
+
   return (
     <div className="page-container">
 
-      {/* Hero */}
-      <header className="dashboard-hero" style={{ marginTop: 'var(--space-4)' }}>
-        <h1>ZenTask</h1>
-        <p>Tu espacio personal de enfoque.</p>
+      {/* Hero — mensaje de bienvenida sin repetir el logo que ya está en el top bar */}
+      <header className="dashboard-hero" style={{ marginTop: 'var(--space-2)' }}>
+        <p style={{ fontSize: 'var(--text-3xl)', fontWeight: 'var(--weight-black)', margin: 0, color: 'var(--fg)' }}>
+          Bienvenido 👋
+        </p>
+        <p style={{ color: 'var(--muted)', marginTop: 'var(--space-1)' }}>Tu espacio personal de enfoque.</p>
       </header>
 
       {/* ── Tareas ── */}
@@ -337,31 +362,51 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
         <div className="grid-cards">
-          {data.routines.map(routine => (
-            <div key={routine.id} className="card">
-              <div className="flex-between mb-6">
-                <div>
-                  <h3 style={{ fontWeight: 'var(--weight-extrabold)', fontSize: 'var(--text-lg)' }}>{routine.title}</h3>
-                  <span className="flex-start gap-2 text-muted text-sm" style={{ fontWeight: 'var(--weight-bold)', marginTop: 'var(--space-1)' }}>
-                    <Clock size={14} /> {formatTime12h(routine.time)}
-                  </span>
-                </div>
-                <button onClick={() => apiCall('POST', '/progress/', {
-                    content_type: 'routine', object_id: routine.id, date: todayISO(), value: 1,
-                  }).then(fetchData)} className="btn-icon" title="Marcar completada hoy">
-                  <CheckCircle2 size={22} color="var(--color-success)" />
-                </button>
-              </div>
-              <div className="day-track">
-                {DAYS.map((day, i) => (
-                  <div key={day.id} className="day-track-item">
-                    <div className={`day-track-bar ${getDayStatus(routine, i)}`} />
-                    <span className="day-track-label">{day.label}</span>
+          {data.routines.map(routine => {
+            const doneToday = isCompletedToday(routine.id);
+            return (
+              <div key={routine.id} className={`card ${doneToday ? 'card-accent-success' : ''}`}>
+                <div className="flex-between mb-6">
+                  <div>
+                    <h3 style={{ fontWeight: 'var(--weight-extrabold)', fontSize: 'var(--text-lg)' }}>{routine.title}</h3>
+                    <span className="flex-start gap-2 text-muted text-sm" style={{ fontWeight: 'var(--weight-bold)', marginTop: 'var(--space-1)' }}>
+                      <Clock size={14} /> {formatTime12h(routine.time)}
+                    </span>
                   </div>
-                ))}
+                  <button
+                    onClick={() => handleRoutineDone(routine)}
+                    disabled={doneToday}
+                    className="btn-icon"
+                    title={doneToday ? 'Ya completada hoy' : 'Marcar completada hoy'}
+                    style={{
+                      backgroundColor: doneToday ? 'var(--color-success-ghost)' : undefined,
+                      cursor: doneToday ? 'default' : 'pointer',
+                    }}
+                  >
+                    <CheckCircle2 size={22} color={doneToday ? 'var(--color-success)' : 'var(--color-success)'}
+                      fill={doneToday ? 'var(--color-success-ghost)' : 'none'} />
+                  </button>
+                </div>
+                <div className="day-track">
+                  {DAYS.map((day, i) => (
+                    <div key={day.id} className="day-track-item">
+                      <div className={`day-track-bar ${getDayStatus(routine, i)}`} />
+                      <span className="day-track-label">{day.label}</span>
+                    </div>
+                  ))}
+                </div>
+                {doneToday && (
+                  <div style={{
+                    marginTop: 'var(--space-4)', textAlign: 'center',
+                    fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)',
+                    color: 'var(--color-success-light)',
+                  }}>
+                    ✓ Completada hoy
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

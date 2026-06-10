@@ -21,9 +21,98 @@
   background-color: var(--bg);
 }
 
+/* ── Top Bar ── */
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--surface-1);
+  backdrop-filter: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-strong);
+  border-bottom: 1px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  z-index: 900;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+}
+
+.top-bar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-black);
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.03em;
+}
+
+/* ── User Menu Trigger Button ── */
+.user-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
+  border: none;
+  cursor: pointer;
+  color: white;
+  box-shadow: var(--shadow-primary);
+  transition: all var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.user-menu-trigger:hover {
+  filter: brightness(1.15);
+  transform: scale(1.06);
+}
+
+/* ── User Menu Panel Items ── */
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  margin-bottom: var(--space-2);
+}
+
+.user-menu-item:hover {
+  background: var(--color-primary-ghost);
+  border-color: var(--color-primary);
+  color: var(--color-primary-light);
+}
+
+.user-menu-item-danger {
+  color: var(--fg);
+}
+
+.user-menu-item-danger:hover {
+  background: var(--color-danger-ghost);
+  border-color: var(--color-danger);
+  color: var(--color-danger-light);
+}
+
 .page-main {
   flex: 1;
-  padding: var(--space-4) var(--space-4) calc(var(--space-20) + 10px) var(--space-4);
+  padding: calc(56px + var(--space-4)) var(--space-4) calc(var(--space-20) + 10px) var(--space-4);
   overflow-y: auto;
   min-width: 0;
 }
@@ -451,37 +540,11 @@ input:focus, select:focus, textarea:focus {
 }
 
 .sidebar-footer {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-3);
-  border-top: none;
-  padding-top: 0;
+  display: none; /* Movido al UserMenu panel */
 }
 
 .sidebar-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  border: none;
-  cursor: pointer;
-  height: 40px;
-  width: 40px;
-  border-radius: var(--radius);
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.sidebar-action:hover {
-  background: var(--surface-2);
-  color: var(--fg);
-}
-
-.sidebar-action-danger:hover {
-  background: var(--color-danger-ghost);
-  color: var(--color-danger-light);
+  display: none; /* Movido al UserMenu panel */
 }
 
 /* ── Loading State ── */

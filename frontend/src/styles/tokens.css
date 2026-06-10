@@ -46,6 +46,8 @@
   --card-bg:        var(--surface-1);
   --border:         var(--surface-border-solid);
   --muted:          var(--text-secondary);
+  /* Panel lateral — fondo completamente sólido */
+  --panel-bg:       #0e1525;
 
   /* ── Tipografía ── */
   --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -140,4 +142,6 @@
   --shadow-lg: 0 20px 40px rgba(124, 58, 237, 0.15), 0 8px 16px rgba(0, 0, 0, 0.08);
   --shadow-primary: 0 4px 20px rgba(124, 58, 237, 0.25);
   --shadow-glow:    0 0 40px rgba(124, 58, 237, 0.08);
+  /* Panel lateral en modo claro — fondo blanco sólido */
+  --panel-bg:  #ffffff;
 }
