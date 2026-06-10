@@ -73,16 +73,28 @@ class PasswordResetRequestView(APIView):
             
             subject = 'Código de recuperación de contraseña - ZenTask'
             message = f'Hola {user.username},\n\nTu código de recuperación es: {code}\n\nEste código es válido por 15 minutos.'
-            try:
-                send_mail(
-                    subject,
-                    message,
-                    None,
-                    [email],
-                    fail_silently=False,
-                )
-            except Exception as e:
-                print(f"Error al enviar correo: {e}")
+            
+            # Envío asíncrono para evitar bloquear el event loop de ASGI/Channels
+            import threading
+            import logging
+            logger = logging.getLogger(__name__)
+
+            def send_email_bg(subj, msg, recipients):
+                try:
+                    send_mail(
+                        subj,
+                        msg,
+                        None,
+                        recipients,
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    logger.error(f"Error en envío de correo de recuperación a {recipients}: {e}")
+
+            threading.Thread(
+                target=send_email_bg,
+                args=(subject, message, [email])
+            ).start()
         
         # Retorna éxito siempre para evitar la enumeración de usuarios
         return Response({'message': 'Si el correo está registrado, recibirás un código de recuperación.'}, status=status.HTTP_200_OK)
@@ -153,5 +165,29 @@ class PasswordResetVerifyView(APIView):
             return Response({'error': 'El código ha expirado.'}, status=status.HTTP_400_BAD_REQUEST)
             
         return Response({'message': 'Código verificado con éxito.'}, status=status.HTTP_200_OK)
+
+
+class DashboardSummaryView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        tasks = Task.objects.filter(user=user)
+        routines = Routine.objects.filter(user=user)
+        goals = Goal.objects.filter(user=user)
+        logs = ProgressLog.objects.filter(user=user)
+        
+        from .serializers import (
+            TaskSerializer, RoutineSerializer, 
+            GoalSerializer, ProgressLogSerializer
+        )
+        
+        return Response({
+            'tasks': TaskSerializer(tasks, many=True).data,
+            'routines': RoutineSerializer(routines, many=True).data,
+            'goals': GoalSerializer(goals, many=True).data,
+            'logs': ProgressLogSerializer(logs, many=True).data,
+        })
+
 
 

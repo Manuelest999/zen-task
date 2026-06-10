@@ -8,7 +8,7 @@ from .views import (
     CategoryViewSet, TaskViewSet, RoutineViewSet, 
     GoalViewSet, ProgressLogViewSet, UserRegisterView,
     PasswordResetRequestView, PasswordResetConfirmView,
-    PasswordResetVerifyView
+    PasswordResetVerifyView, DashboardSummaryView
 )
 
 router = DefaultRouter()
@@ -26,5 +26,6 @@ urlpatterns = [
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset/verify/', PasswordResetVerifyView.as_view(), name='password_reset_verify'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('dashboard/summary/', DashboardSummaryView.as_view(), name='dashboard_summary'),
 ]
 

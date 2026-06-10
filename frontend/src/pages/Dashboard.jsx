@@ -212,15 +212,17 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [t, r, g, l] = await Promise.all([
-        axios.get(`${API_BASE}/tasks/`),
-        axios.get(`${API_BASE}/routines/`),
-        axios.get(`${API_BASE}/goals/`),
-        axios.get(`${API_BASE}/progress/`),
-      ]);
-      setData({ tasks: t.data, routines: r.data, goals: g.data, logs: l.data });
+      const { data: summary } = await axios.get(`${API_BASE}/dashboard/summary/`);
+      setData({
+        tasks: summary.tasks,
+        routines: summary.routines,
+        goals: summary.goals,
+        logs: summary.logs
+      });
       setLoading(false);
-    } catch (e) { console.error('Error cargando dashboard:', e); }
+    } catch (e) {
+      console.error('Error cargando dashboard:', e);
+    }
   };
 
   useEffect(() => {
