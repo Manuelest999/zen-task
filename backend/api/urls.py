@@ -7,7 +7,8 @@ from rest_framework_simplejwt.views import (
 from .views import (
     CategoryViewSet, TaskViewSet, RoutineViewSet, 
     GoalViewSet, ProgressLogViewSet, UserRegisterView,
-    PasswordResetRequestView, PasswordResetConfirmView
+    PasswordResetRequestView, PasswordResetConfirmView,
+    PasswordResetVerifyView
 )
 
 router = DefaultRouter()
@@ -23,6 +24,7 @@ urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('password-reset/verify/', PasswordResetVerifyView.as_view(), name='password_reset_verify'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 ]
 

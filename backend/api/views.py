@@ -124,3 +124,34 @@ class PasswordResetConfirmView(APIView):
         
         return Response({'message': 'Contraseña restablecida con éxito.'}, status=status.HTTP_200_OK)
 
+
+class PasswordResetVerifyView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        code = request.data.get('code')
+        
+        if not email or not code:
+            return Response({'error': 'El correo y el código son requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        users = User.objects.filter(email=email)
+        if not users.exists():
+            return Response({'error': 'Correo o código incorrecto.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        user = users.first()
+        
+        from .models import PasswordResetCode
+        reset_code_qs = PasswordResetCode.objects.filter(user=user, code=code, is_used=False).order_by('-created_at')
+        
+        if not reset_code_qs.exists():
+            return Response({'error': 'Código incorrecto o inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        reset_code = reset_code_qs.first()
+        
+        if reset_code.is_expired():
+            return Response({'error': 'El código ha expirado.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        return Response({'message': 'Código verificado con éxito.'}, status=status.HTTP_200_OK)
+
+

@@ -5,7 +5,7 @@ import axios from 'axios';
 import { API_BASE } from '../utils';
 
 const Login = () => {
-  const [mode, setMode] = useState('login'); // 'login' | 'forgot-request' | 'forgot-confirm'
+  const [mode, setMode] = useState('login'); // 'login' | 'forgot-request' | 'forgot-verify' | 'forgot-reset'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -46,9 +46,32 @@ const Login = () => {
     try {
       const response = await axios.post(`${API_BASE}/password-reset/request/`, { email });
       setSuccess(response.data.message || 'Código enviado con éxito.');
-      setMode('forgot-confirm');
+      setMode('forgot-verify');
     } catch (err) {
       setError(err.response?.data?.error || 'Ocurrió un error al solicitar el código.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    if (!code) {
+      setError('El código es requerido.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE}/password-reset/verify/`, {
+        email,
+        code
+      });
+      setSuccess(response.data.message || 'Código verificado con éxito.');
+      setMode('forgot-reset');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Código incorrecto, expirado o inválido.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +102,7 @@ const Login = () => {
       setNewPassword('');
       setConfirmNewPassword('');
     } catch (err) {
-      setError(err.response?.data?.error || 'Código incorrecto, expirado o inválido.');
+      setError(err.response?.data?.error || 'Ocurrió un error al restablecer la contraseña.');
     } finally {
       setLoading(false);
     }
@@ -106,7 +129,8 @@ const Login = () => {
           <p className="text-muted text-sm">
             {mode === 'login' && 'Inicia sesión para continuar'}
             {mode === 'forgot-request' && 'Recupera tu contraseña'}
-            {mode === 'forgot-confirm' && 'Establece tu nueva contraseña'}
+            {mode === 'forgot-verify' && 'Ingresa el código recibido'}
+            {mode === 'forgot-reset' && 'Establece tu nueva contraseña'}
           </p>
         </div>
 
@@ -146,7 +170,7 @@ const Login = () => {
                 <label className="form-label" htmlFor="login-password" style={{ marginBottom: 0 }}>Contraseña</label>
                 <button
                   type="button"
-                  onClick={() => { setMode('forgot-request'); setError(''); setSuccess(''); }}
+                  onClick={() => { setMode('forgot-request'); setError(''); setSuccess(''); setEmail(''); setCode(''); }}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -209,12 +233,12 @@ const Login = () => {
           </form>
         )}
 
-        {mode === 'forgot-confirm' && (
-          <form onSubmit={handleConfirmReset} className="modal-form">
+        {mode === 'forgot-verify' && (
+          <form onSubmit={handleVerifyCode} className="modal-form">
             <div className="form-group">
-              <label className="form-label" htmlFor="confirm-email">Correo Electrónico</label>
+              <label className="form-label" htmlFor="verify-email">Correo Electrónico</label>
               <input
-                id="confirm-email"
+                id="verify-email"
                 type="email"
                 value={email}
                 disabled
@@ -233,6 +257,27 @@ const Login = () => {
                 required
               />
             </div>
+            <button 
+              type="submit" 
+              className="btn btn-primary w-full" 
+              style={{ justifyContent: 'center', padding: 'var(--space-4)' }}
+              disabled={loading}
+            >
+              {loading ? 'Verificando...' : 'Verificar código'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary w-full"
+              style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }}
+              onClick={() => { setMode('forgot-request'); setError(''); setSuccess(''); }}
+            >
+              Volver
+            </button>
+          </form>
+        )}
+
+        {mode === 'forgot-reset' && (
+          <form onSubmit={handleConfirmReset} className="modal-form">
             <div className="form-group">
               <label className="form-label" htmlFor="confirm-password">Nueva Contraseña</label>
               <input
@@ -269,7 +314,7 @@ const Login = () => {
               type="button"
               className="btn btn-secondary w-full"
               style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }}
-              onClick={() => { setMode('forgot-request'); setError(''); setSuccess(''); }}
+              onClick={() => { setMode('forgot-verify'); setError(''); setSuccess(''); }}
             >
               Volver
             </button>
