@@ -3,9 +3,8 @@ import {
   CheckSquare, Repeat, Target, Plus, Clock,
   CheckCircle2, X, Layout as DashboardIcon, AlertCircle,
 } from 'lucide-react';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_BASE, formatTime12h, formatDate, DAYS, todayISO, apiCall } from '../utils';
+import { formatTime12h, formatDate, DAYS, todayISO, apiCall } from '../utils';
 import { Trophy } from 'lucide-react';
 import SectionHeader from '../components/ui/SectionHeader';
 
@@ -212,16 +211,34 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const { data: summary } = await axios.get(`${API_BASE}/dashboard/summary/`);
-      setData({
-        tasks: summary.tasks,
-        routines: summary.routines,
-        goals: summary.goals,
-        logs: summary.logs
-      });
+      // Primero intentamos el endpoint de resumen (online)
+      // Si falla o estamos offline, reconstruimos desde las tablas locales
+      if (navigator.onLine) {
+        const { data: summary } = await apiCall('GET', '/dashboard/summary/');
+        setData({
+          tasks:    summary.tasks    ?? [],
+          routines: summary.routines ?? [],
+          goals:    summary.goals    ?? [],
+          logs:     summary.logs     ?? [],
+        });
+      } else {
+        const [tasks, routines, goals, logs] = await Promise.all([
+          apiCall('GET', '/tasks/'),
+          apiCall('GET', '/routines/'),
+          apiCall('GET', '/goals/'),
+          apiCall('GET', '/progress/'),
+        ]);
+        setData({
+          tasks:    tasks.data    ?? [],
+          routines: routines.data ?? [],
+          goals:    goals.data    ?? [],
+          logs:     logs.data     ?? [],
+        });
+      }
       setLoading(false);
     } catch (e) {
       console.error('Error cargando dashboard:', e);
+      setLoading(false);
     }
   };
 

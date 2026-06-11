@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Plus, Trash2, Target, Edit2, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_BASE, apiCall, formatDate } from '../utils';
+import { apiCall, formatDate } from '../utils';
 import Modal      from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
 
@@ -17,7 +16,7 @@ const Goals = () => {
 
   const fetchGoals = async () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/goals/`);
+      const { data } = await apiCall('GET', '/goals/');
       setGoals(data);
     } catch (e) { console.error(e); }
   };

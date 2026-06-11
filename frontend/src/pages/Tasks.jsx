@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   Plus, Trash2, CheckCircle2, Edit2, Calendar as CalendarIcon,
   Clock, AlertCircle, Filter, AlignLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_BASE, formatTime12h, formatDate, apiCall } from '../utils';
+import { formatTime12h, formatDate, apiCall } from '../utils';
 import Modal      from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
 import Badge      from '../components/ui/Badge';
@@ -32,7 +31,7 @@ const Tasks = () => {
 
   const fetchTasks = async () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/tasks/`);
+      const { data } = await apiCall('GET', '/tasks/');
       setTasks(data);
     } catch (e) { console.error(e); }
   };

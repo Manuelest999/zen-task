@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
 import { Plus, Trash2, Clock, Edit2, CheckCircle2, Flame, TrendingUp, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_BASE, DAYS, formatTime12h, apiCall, todayISO } from '../utils';
+import { DAYS, formatTime12h, apiCall, todayISO } from '../utils';
 import Modal      from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
 
@@ -196,8 +195,8 @@ const Routines = () => {
   const fetchAll = async () => {
     try {
       const [{ data: r }, { data: l }] = await Promise.all([
-        axios.get(`${API_BASE}/routines/`),
-        axios.get(`${API_BASE}/progress/`),
+        apiCall('GET', '/routines/'),
+        apiCall('GET', '/progress/'),
       ]);
       setRoutines(r);
       setLogs(l);

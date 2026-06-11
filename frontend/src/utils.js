@@ -1,12 +1,12 @@
 /**
  * ZenTask — Utilidades compartidas
- * Helpers de fecha/hora y constantes usadas en múltiples componentes.
+ * Helpers de fecha/hora, constantes y el wrapper de API offline-first.
  */
 import axios from 'axios';
-import { addToQueue } from './lib/offlineQueue';
+import db, { refreshTable, enqueue } from './lib/db';
 
 // ── URL base de la API ──────────────────────────────────────────────────────
-// En desarrollo local: usa '/api' (proxy de Vite → http://localhost:8000/api)
+// En desarrollo local: usa '/api' (proxy de Vite → http://localhost:8001/api)
 // En producción (Vercel): usa VITE_API_URL → https://tu-backend.railway.app/api
 export const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -72,19 +72,118 @@ export const PRIORITY_BADGE_CLASS = {
   LOW:    'badge badge-success',
 };
 
-// ── Wrapper API ─────────────────────────────────────────────────────────────
+// ── Mapa de endpoints a tablas de IndexedDB ────────────────────────────────
+const ENDPOINT_TABLE_MAP = {
+  '/tasks/':      'tasks',
+  '/routines/':   'routines',
+  '/goals/':      'goals',
+  '/progress/':   'progress_logs',
+};
+
 /**
- * Realiza una llamada a la API. Si no hay conexión y la operación es mutativa
- * (POST, PATCH, DELETE), la guarda en la cola offline y la resuelve simulando éxito.
+ * Detecta qué tabla de IndexedDB corresponde a un endpoint.
+ * Ej: '/tasks/3e4a.../' → 'tasks'
+ */
+const getTableForEndpoint = (endpoint) => {
+  for (const [prefix, table] of Object.entries(ENDPOINT_TABLE_MAP)) {
+    if (endpoint.startsWith(prefix) || endpoint === prefix.slice(0, -1)) {
+      return table;
+    }
+  }
+  return null;
+};
+
+// ── Wrapper API (Offline-First) ────────────────────────────────────────────
+/**
+ * Realiza una llamada a la API con soporte offline completo:
+ *
+ * GET:
+ *   - Si hay conexión: llama al backend, actualiza caché local y retorna la respuesta.
+ *   - Si no hay conexión: retorna los datos de IndexedDB.
+ *
+ * POST / PATCH / DELETE (mutaciones):
+ *   - Si hay conexión: ejecuta la petición normalmente.
+ *   - Si no hay conexión:
+ *       1. Genera un UUID local si es POST.
+ *       2. Aplica el cambio optimistamente en IndexedDB.
+ *       3. Encola la operación en sync_queue para sincronizar después.
+ *       4. Retorna un objeto simulado de éxito.
  */
 export const apiCall = async (method, endpoint, data = null) => {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
-  
-  if (!navigator.onLine && ['POST', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {
-    const route = endpoint.replace(API_BASE, '');
-    addToQueue(method, route, data);
-    return { data: { offline: true, id: Date.now() } };
+  const upperMethod = method.toUpperCase();
+  const table = getTableForEndpoint(endpoint);
+
+  // ── GET ──────────────────────────────────────────────────────────────────
+  if (upperMethod === 'GET') {
+    if (navigator.onLine) {
+      try {
+        const response = await axios({ method: 'GET', url });
+        // Actualizar caché local si conocemos la tabla
+        if (table) {
+          const items = Array.isArray(response.data)
+            ? response.data
+            : response.data?.results ?? [];
+          await refreshTable(table, items);
+        }
+        return response;
+      } catch (err) {
+        // Falló la red aunque navigator.onLine era true → fallback a caché
+        console.warn(`[apiCall] GET fallo red, usando caché para ${table}`, err);
+      }
+    }
+
+    // Modo offline o fallo de red → servir desde IndexedDB
+    if (table) {
+      const cachedItems = await db[table].toArray();
+      return { data: cachedItems, offline: true };
+    }
+    throw new Error(`Sin conexión y sin caché disponible para ${endpoint}`);
   }
 
-  return axios({ method, url, data });
+  // ── POST / PATCH / DELETE ────────────────────────────────────────────────
+  if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(upperMethod)) {
+    if (navigator.onLine) {
+      // Online: petición directa al servidor
+      return axios({ method: upperMethod, url, data });
+    }
+
+    // Offline: actuación optimista + cola
+    if (!table) {
+      // Endpoints sin tabla local (ej: /dashboard/summary/) se encolan igualmente
+      await enqueue(upperMethod, endpoint, data);
+      return { data: { offline: true }, offline: true };
+    }
+
+    const localData = { ...data };
+
+    if (upperMethod === 'POST') {
+      // Asignar UUID local si no viene uno ya asignado
+      if (!localData.id) {
+        localData.id = crypto.randomUUID();
+      }
+      // Guardar en IndexedDB de inmediato (optimista)
+      await db[table].put({ ...localData, _offline: true });
+    } else if (upperMethod === 'PATCH' || upperMethod === 'PUT') {
+      // Extraer el ID del endpoint (/tasks/uuid/) y actualizar localmente
+      const segments = endpoint.split('/').filter(Boolean);
+      const resourceId = segments[segments.length - 1];
+      const existing = await db[table].get(resourceId);
+      if (existing) {
+        await db[table].put({ ...existing, ...localData, _offline: true });
+      }
+    } else if (upperMethod === 'DELETE') {
+      const segments = endpoint.split('/').filter(Boolean);
+      const resourceId = segments[segments.length - 1];
+      await db[table].delete(resourceId);
+    }
+
+    // Encolar para sincronización posterior
+    await enqueue(upperMethod, endpoint, localData);
+
+    return { data: { ...localData, offline: true }, offline: true };
+  }
+
+  // Fallback para métodos no contemplados
+  return axios({ method: upperMethod, url, data });
 };
