@@ -31,10 +31,6 @@ ALLOWED_HOSTS = config(
     cast=Csv()
 )
 
-# Railway usa este hostname interno para los healthchecks — siempre debe estar permitido
-if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('healthcheck.railway.app')
-
 # ── Application definition ─────────────────────────────────────────────────────
 
 INSTALLED_APPS = [

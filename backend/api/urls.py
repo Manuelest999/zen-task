@@ -1,4 +1,5 @@
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -10,6 +11,9 @@ from .views import (
     PasswordResetRequestView, PasswordResetConfirmView,
     PasswordResetVerifyView, DashboardSummaryView
 )
+
+def health_check(request):
+    return JsonResponse({'status': 'ok'})
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet)
@@ -27,5 +31,6 @@ urlpatterns = [
     path('password-reset/verify/', PasswordResetVerifyView.as_view(), name='password_reset_verify'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('dashboard/summary/', DashboardSummaryView.as_view(), name='dashboard_summary'),
+    path('health/', health_check, name='health_check'),
 ]
 
