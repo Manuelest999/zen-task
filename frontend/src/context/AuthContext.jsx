@@ -30,9 +30,14 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   };
 
-  const register = async (username, email, password) => {
+  const register = async (username, email, password, securityAnswers) => {
     // Registrar el usuario en la base de datos (ruta correcta de la API con barra final y API_BASE)
-    await axios.post(`${API_BASE}/register/`, { username, email, password });
+    await axios.post(`${API_BASE}/register/`, {
+      username,
+      email,
+      password,
+      ...securityAnswers, // question_1, answer_1, question_2, answer_2, question_3, answer_3
+    });
     // Iniciar sesión automáticamente después de registrarse
     return await login(username, password);
   };

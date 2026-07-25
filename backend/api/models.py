@@ -225,27 +225,47 @@ class ProgressLog(models.Model):
         return f'{self.content_type} {self.object_id} · {self.date}'
 
 
-# ── Códigos de Recuperación de Contraseña ─────────────────────────────────────
+# ── Preguntas de Seguridad ─────────────────────────────────────────────────────
 
-class PasswordResetCode(models.Model):
-    """Código de 6 dígitos para restablecer contraseña (expira en 15 min)."""
+SECURITY_QUESTIONS = [
+    ('pet',     '¿Cuál es el nombre de tu mascota?'),
+    ('movie',   '¿Cuál es tu película favorita?'),
+    ('country', '¿Qué país te gustaría visitar?'),
+    ('friend',  '¿Cuál es el nombre de tu mejor amigo de la infancia?'),
+    ('school',  '¿Cuál es el nombre de tu escuela primaria?'),
+    ('food',    '¿Cuál es tu comida favorita?'),
+]
 
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='reset_codes'
+class SecurityAnswer(models.Model):
+    """Respuestas a 3 preguntas de seguridad por usuario para recuperar contraseña."""
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name='security_answers'
     )
-    code = models.CharField(max_length=6)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_used = models.BooleanField(default=False)
+
+    question_1 = models.CharField(max_length=20, choices=SECURITY_QUESTIONS)
+    answer_1   = models.CharField(max_length=255)
+
+    question_2 = models.CharField(max_length=20, choices=SECURITY_QUESTIONS)
+    answer_2   = models.CharField(max_length=255)
+
+    question_3 = models.CharField(max_length=20, choices=SECURITY_QUESTIONS)
+    answer_3   = models.CharField(max_length=255)
 
     class Meta:
-        verbose_name = 'Código de Recuperación'
-        verbose_name_plural = 'Códigos de Recuperación'
-        ordering = ['-created_at']
+        verbose_name = 'Respuesta de Seguridad'
+        verbose_name_plural = 'Respuestas de Seguridad'
 
-    def is_expired(self):
-        from django.utils import timezone
-        from datetime import timedelta
-        return timezone.now() > self.created_at + timedelta(minutes=15)
+    def check_answer(self, question_key, answer):
+        """Verifica si la respuesta coincide con la pregunta dada (insensible a mayúsculas/espacios)."""
+        answer_clean = answer.strip().lower()
+        if self.question_1 == question_key:
+            return self.answer_1.strip().lower() == answer_clean
+        if self.question_2 == question_key:
+            return self.answer_2.strip().lower() == answer_clean
+        if self.question_3 == question_key:
+            return self.answer_3.strip().lower() == answer_clean
+        return False
 
     def __str__(self):
-        return f'{self.user.username} – {self.code}'
+        return f'Seguridad de {self.user.username}'

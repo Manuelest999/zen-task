@@ -6,10 +6,10 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import (
-    CategoryViewSet, TaskViewSet, RoutineViewSet, 
+    CategoryViewSet, TaskViewSet, RoutineViewSet,
     GoalViewSet, ProgressLogViewSet, UserRegisterView,
-    PasswordResetRequestView, PasswordResetConfirmView,
-    PasswordResetVerifyView, DashboardSummaryView
+    SecurityQuestionGetView, PasswordResetBySecurityView,
+    DashboardSummaryView
 )
 
 def health_check(request):
@@ -27,10 +27,8 @@ urlpatterns = [
     path('register/', UserRegisterView.as_view(), name='register'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('password-reset/request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
-    path('password-reset/verify/', PasswordResetVerifyView.as_view(), name='password_reset_verify'),
-    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('password-reset/question/', SecurityQuestionGetView.as_view(), name='password_reset_question'),
+    path('password-reset/confirm/', PasswordResetBySecurityView.as_view(), name='password_reset_confirm'),
     path('dashboard/summary/', DashboardSummaryView.as_view(), name='dashboard_summary'),
     path('health/', health_check, name='health_check'),
 ]
-

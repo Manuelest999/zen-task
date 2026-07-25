@@ -1,13 +1,21 @@
+import random
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Category, Task, Routine, Goal, ProgressLog
+from rest_framework.views import APIView
+from django.contrib.auth import get_user_model
+
+from .models import Category, Task, Routine, Goal, ProgressLog, SecurityAnswer, SECURITY_QUESTIONS
 from .serializers import (
-    UserSerializer, CategorySerializer, TaskSerializer, 
+    UserSerializer, CategorySerializer, TaskSerializer,
     RoutineSerializer, GoalSerializer, ProgressLogSerializer
 )
 
-from rest_framework.views import APIView
+User = get_user_model()
+
+# Mapa key → texto de pregunta para devolver al frontend
+QUESTION_MAP = dict(SECURITY_QUESTIONS)
+
 
 class UserRegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -18,6 +26,7 @@ class UserRegisterView(APIView):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+
 class BaseUserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -27,167 +36,135 @@ class BaseUserViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+
 class CategoryViewSet(BaseUserViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+
 
 class TaskViewSet(BaseUserViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
 
+
 class RoutineViewSet(BaseUserViewSet):
     queryset = Routine.objects.all()
     serializer_class = RoutineSerializer
 
+
 class GoalViewSet(BaseUserViewSet):
     queryset = Goal.objects.all()
     serializer_class = GoalSerializer
+
 
 class ProgressLogViewSet(BaseUserViewSet):
     queryset = ProgressLog.objects.all()
     serializer_class = ProgressLogSerializer
 
 
-import random
-from django.core.mail import send_mail
-from django.contrib.auth import get_user_model
+# ── Recuperación por preguntas de seguridad ────────────────────────────────────
 
-User = get_user_model()
-
-class PasswordResetRequestView(APIView):
+class SecurityQuestionGetView(APIView):
+    """
+    POST { username } → devuelve una pregunta aleatoria de las 3 del usuario.
+    Responde con { question_key, question_text } para que el frontend lo muestre.
+    Siempre responde 200 aunque el usuario no exista (evita enumeración).
+    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
-        if not email:
-            return Response({'error': 'El correo electrónico es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        users = User.objects.filter(email=email)
-        if users.exists():
-            user = users.first()
-            # Generar código de 6 dígitos
-            code = f"{random.randint(100000, 999999)}"
-            
-            from .models import PasswordResetCode
-            PasswordResetCode.objects.create(user=user, code=code)
-            
-            subject = 'Código de recuperación de contraseña - ZenTask'
-            message = f'Hola {user.username},\n\nTu código de recuperación es: {code}\n\nEste código es válido por 15 minutos.'
-            
-            # Envío asíncrono para evitar bloquear el event loop de ASGI/Channels
-            import threading
-            import logging
-            logger = logging.getLogger(__name__)
+        username = request.data.get('username', '').strip()
 
-            def send_email_bg(subj, msg, recipients):
-                try:
-                    send_mail(
-                        subj,
-                        msg,
-                        None,
-                        recipients,
-                        fail_silently=False,
-                    )
-                except Exception as e:
-                    logger.error(f"Error en envío de correo de recuperación a {recipients}: {e}")
+        if not username:
+            return Response(
+                {'error': 'El nombre de usuario es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            threading.Thread(
-                target=send_email_bg,
-                args=(subject, message, [email])
-            ).start()
-        
-        # Retorna éxito siempre para evitar la enumeración de usuarios
-        return Response({'message': 'Si el correo está registrado, recibirás un código de recuperación.'}, status=status.HTTP_200_OK)
+        try:
+            user = User.objects.get(username=username)
+            answers = SecurityAnswer.objects.get(user=user)
+        except (User.DoesNotExist, SecurityAnswer.DoesNotExist):
+            # Respuesta genérica para no revelar si el usuario existe
+            return Response(
+                {'error': 'No se encontró el usuario o no tiene preguntas de seguridad configuradas.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Elegir una de las 3 preguntas al azar
+        options = [answers.question_1, answers.question_2, answers.question_3]
+        chosen_key = random.choice(options)
+
+        return Response({
+            'question_key':  chosen_key,
+            'question_text': QUESTION_MAP.get(chosen_key, chosen_key),
+        }, status=status.HTTP_200_OK)
 
 
-class PasswordResetConfirmView(APIView):
+class PasswordResetBySecurityView(APIView):
+    """
+    POST { username, question_key, answer, new_password }
+    → verifica la respuesta y cambia la contraseña si es correcta.
+    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
-        code = request.data.get('code')
-        new_password = request.data.get('password')
-        
-        if not email or not code or not new_password:
-            return Response({'error': 'Todos los campos son requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        users = User.objects.filter(email=email)
-        if not users.exists():
-            return Response({'error': 'Correo o código inválido.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        user = users.first()
-        
-        from .models import PasswordResetCode
-        reset_code_qs = PasswordResetCode.objects.filter(user=user, code=code, is_used=False).order_by('-created_at')
-        
-        if not reset_code_qs.exists():
-            return Response({'error': 'Código inválido o ya utilizado.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        reset_code = reset_code_qs.first()
-        
-        if reset_code.is_expired():
-            return Response({'error': 'El código ha expirado.'}, status=status.HTTP_400_BAD_REQUEST)
-            
+        username     = request.data.get('username', '').strip()
+        question_key = request.data.get('question_key', '').strip()
+        answer       = request.data.get('answer', '').strip()
+        new_password = request.data.get('new_password', '')
+
+        if not username or not question_key or not answer or not new_password:
+            return Response(
+                {'error': 'Todos los campos son requeridos.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'La nueva contraseña debe tener al menos 8 caracteres.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(username=username)
+            answers = SecurityAnswer.objects.get(user=user)
+        except (User.DoesNotExist, SecurityAnswer.DoesNotExist):
+            return Response(
+                {'error': 'Usuario o respuesta incorrectos.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not answers.check_answer(question_key, answer):
+            return Response(
+                {'error': 'La respuesta es incorrecta.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         user.set_password(new_password)
         user.save()
-        
-        reset_code.is_used = True
-        reset_code.save()
-        
-        return Response({'message': 'Contraseña restablecida con éxito.'}, status=status.HTTP_200_OK)
+
+        return Response(
+            {'message': 'Contraseña restablecida con éxito.'},
+            status=status.HTTP_200_OK
+        )
 
 
-class PasswordResetVerifyView(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        email = request.data.get('email')
-        code = request.data.get('code')
-        
-        if not email or not code:
-            return Response({'error': 'El correo y el código son requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        users = User.objects.filter(email=email)
-        if not users.exists():
-            return Response({'error': 'Correo o código incorrecto.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        user = users.first()
-        
-        from .models import PasswordResetCode
-        reset_code_qs = PasswordResetCode.objects.filter(user=user, code=code, is_used=False).order_by('-created_at')
-        
-        if not reset_code_qs.exists():
-            return Response({'error': 'Código incorrecto o inválido.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        reset_code = reset_code_qs.first()
-        
-        if reset_code.is_expired():
-            return Response({'error': 'El código ha expirado.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        return Response({'message': 'Código verificado con éxito.'}, status=status.HTTP_200_OK)
-
+# ── Dashboard ──────────────────────────────────────────────────────────────────
 
 class DashboardSummaryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        tasks = Task.objects.filter(user=user)
+        tasks    = Task.objects.filter(user=user)
         routines = Routine.objects.filter(user=user)
-        goals = Goal.objects.filter(user=user)
-        logs = ProgressLog.objects.filter(user=user)
-        
-        from .serializers import (
-            TaskSerializer, RoutineSerializer, 
-            GoalSerializer, ProgressLogSerializer
-        )
-        
+        goals    = Goal.objects.filter(user=user)
+        logs     = ProgressLog.objects.filter(user=user)
+
         return Response({
-            'tasks': TaskSerializer(tasks, many=True).data,
+            'tasks':    TaskSerializer(tasks, many=True).data,
             'routines': RoutineSerializer(routines, many=True).data,
-            'goals': GoalSerializer(goals, many=True).data,
-            'logs': ProgressLogSerializer(logs, many=True).data,
+            'goals':    GoalSerializer(goals, many=True).data,
+            'logs':     ProgressLogSerializer(logs, many=True).data,
         })
-
-
-

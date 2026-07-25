@@ -34,6 +34,16 @@ const STRENGTH_COLOR = [
   'var(--color-success)',
 ];
 
+// ── Preguntas de seguridad disponibles ────────────────────────────────────
+const SECURITY_QUESTIONS = [
+  { key: 'pet',     text: '¿Cuál es el nombre de tu mascota?' },
+  { key: 'movie',   text: '¿Cuál es tu película favorita?' },
+  { key: 'country', text: '¿Qué país te gustaría visitar?' },
+  { key: 'friend',  text: '¿Cuál es el nombre de tu mejor amigo de la infancia?' },
+  { key: 'school',  text: '¿Cuál es el nombre de tu escuela primaria?' },
+  { key: 'food',    text: '¿Cuál es tu comida favorita?' },
+];
+
 // ── Indicador de fortaleza ─────────────────────────────────────────────────
 const StrengthMeter = ({ password }) => {
   if (!password) return null;
@@ -104,6 +114,57 @@ const PasswordField = ({ id, label, value, onChange, autoComplete, showStrength 
   );
 };
 
+// ── Subcomponente: Fila de pregunta de seguridad ────────────────────────────
+const SecurityQuestionRow = ({ index, questionKey, answer, usedKeys, onChange, disabled }) => {
+  const available = SECURITY_QUESTIONS.filter(
+    q => q.key === questionKey || !usedKeys.includes(q.key)
+  );
+
+  return (
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      <label
+        className="form-label"
+        htmlFor={`sq-${index}`}
+        style={{ marginBottom: 'var(--space-1)', display: 'block' }}
+      >
+        Pregunta {index + 1}
+      </label>
+      <select
+        id={`sq-${index}`}
+        value={questionKey}
+        onChange={e => onChange(index, 'key', e.target.value)}
+        disabled={disabled}
+        style={{
+          width: '100%',
+          marginBottom: 'var(--space-2)',
+          padding: 'var(--space-3)',
+          background: 'var(--surface)',
+          color: 'var(--text)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          fontSize: 'var(--text-sm)',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+        }}
+      >
+        <option value="">— Selecciona una pregunta —</option>
+        {available.map(q => (
+          <option key={q.key} value={q.key}>{q.text}</option>
+        ))}
+      </select>
+      <input
+        id={`sa-${index}`}
+        type="text"
+        placeholder="Tu respuesta"
+        value={answer}
+        onChange={e => onChange(index, 'answer', e.target.value)}
+        disabled={disabled || !questionKey}
+        maxLength={MAX_FIELD_LEN}
+        autoComplete="off"
+      />
+    </div>
+  );
+};
+
 // ── Componente Register ────────────────────────────────────────────────────
 const Register = () => {
   const [username,        setUsername]        = useState('');
@@ -113,8 +174,30 @@ const Register = () => {
   const [error,           setError]           = useState('');
   const [loading,         setLoading]         = useState(false);
 
+  // 3 preguntas de seguridad
+  const [securityRows, setSecurityRows] = useState([
+    { key: '', answer: '' },
+    { key: '', answer: '' },
+    { key: '', answer: '' },
+  ]);
+
   const { register } = useAuth();
   const navigate     = useNavigate();
+
+  const handleSecurityChange = (index, field, value) => {
+    setSecurityRows(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  // Las claves ya usadas en otras filas (para deshabilitar opciones duplicadas)
+  const usedKeysByRow = (currentIndex) =>
+    securityRows
+      .filter((_, i) => i !== currentIndex)
+      .map(r => r.key)
+      .filter(Boolean);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -156,10 +239,36 @@ const Register = () => {
       return;
     }
 
+    // Validar preguntas de seguridad
+    for (let i = 0; i < 3; i++) {
+      if (!securityRows[i].key) {
+        setError(`Selecciona la pregunta de seguridad ${i + 1}.`);
+        return;
+      }
+      if (!securityRows[i].answer.trim()) {
+        setError(`Ingresa la respuesta a la pregunta de seguridad ${i + 1}.`);
+        return;
+      }
+    }
+
+    const keys = securityRows.map(r => r.key);
+    if (new Set(keys).size !== 3) {
+      setError('Las 3 preguntas de seguridad deben ser diferentes.');
+      return;
+    }
+
     // ── Envío al backend ───────────────────────────────────────────────
     setLoading(true);
     try {
-      await register(cleanUser, cleanEmail, cleanPass);
+      const securityAnswers = {
+        question_1: securityRows[0].key,
+        answer_1:   securityRows[0].answer.trim(),
+        question_2: securityRows[1].key,
+        answer_2:   securityRows[1].answer.trim(),
+        question_3: securityRows[2].key,
+        answer_3:   securityRows[2].answer.trim(),
+      };
+      await register(cleanUser, cleanEmail, cleanPass, securityAnswers);
       navigate('/');
     } catch (err) {
       if (err.response?.data) {
@@ -177,7 +286,7 @@ const Register = () => {
 
   return (
     <div className="loading-center" style={{ padding: 'var(--space-4)' }}>
-      <div className="card" style={{ width: '100%', maxWidth: '420px', padding: 'var(--space-10)' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '480px', padding: 'var(--space-10)' }}>
 
         <div style={{ marginBottom: 'var(--space-8)', textAlign: 'center' }}>
           <h1 style={{
@@ -278,10 +387,43 @@ const Register = () => {
             </p>
           )}
 
+          {/* Preguntas de Seguridad */}
+          <div style={{
+            marginTop: 'var(--space-6)',
+            padding: 'var(--space-5)',
+            borderRadius: 'var(--radius)',
+            background: 'rgba(124,58,237,0.07)',
+            border: '1px solid rgba(124,58,237,0.2)',
+          }}>
+            <p style={{
+              fontSize: 'var(--text-sm)',
+              fontWeight: 'var(--weight-bold)',
+              color: 'var(--color-primary-light)',
+              marginBottom: 'var(--space-1)',
+            }}>
+              🔐 Preguntas de Seguridad
+            </p>
+            <p className="text-muted text-xs" style={{ marginBottom: 'var(--space-4)' }}>
+              Estas preguntas te permitirán recuperar tu contraseña si la olvidas.
+              Elige 3 diferentes y recuerda tus respuestas.
+            </p>
+            {securityRows.map((row, i) => (
+              <SecurityQuestionRow
+                key={i}
+                index={i}
+                questionKey={row.key}
+                answer={row.answer}
+                usedKeys={usedKeysByRow(i)}
+                onChange={handleSecurityChange}
+                disabled={loading}
+              />
+            ))}
+          </div>
+
           <button
             type="submit"
             className="btn btn-primary w-full"
-            style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }}
+            style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-6)' }}
             disabled={loading}
           >
             {loading ? 'Creando cuenta...' : 'Registrarse'}

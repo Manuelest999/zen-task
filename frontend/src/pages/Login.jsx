@@ -13,10 +13,6 @@ const MAX_FIELD_LEN  = 150;     // longitud máxima de cualquier campo
 const sanitize = (str) =>
   String(str).replace(/[<>"'`;&\\]/g, '').trim().slice(0, MAX_FIELD_LEN);
 
-/** Valida formato de email básico */
-const isValidEmail = (email) =>
-  /^[^\s@]{1,64}@[^\s@]{1,253}\.[^\s@]{2,63}$/.test(email);
-
 /** Evalúa la fortaleza de la contraseña (0-4) */
 const passwordStrength = (pwd) => {
   let score = 0;
@@ -103,17 +99,20 @@ const PasswordField = ({ id, label, value, onChange, autoComplete, showStrength 
 
 // ── Componente principal Login ────────────────────────────────────────────
 const Login = () => {
-  const [mode, setMode] = useState('login'); // 'login' | 'forgot-request' | 'forgot-verify' | 'forgot-reset'
+  // 'login' | 'forgot-question' | 'forgot-reset'
+  const [mode, setMode] = useState('login');
 
   // Campos de login
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   // Campos de recuperación
-  const [email, setEmail]                       = useState('');
-  const [code, setCode]                         = useState('');
-  const [newPassword, setNewPassword]           = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [resetUsername,       setResetUsername]       = useState('');
+  const [questionKey,         setQuestionKey]         = useState('');
+  const [questionText,        setQuestionText]        = useState('');
+  const [securityAnswer,      setSecurityAnswer]      = useState('');
+  const [newPassword,         setNewPassword]         = useState('');
+  const [confirmNewPassword,  setConfirmNewPassword]  = useState('');
 
   // Estado de la UI
   const [error, setError]     = useState('');
@@ -152,9 +151,8 @@ const Login = () => {
 
     if (isLockedOut()) return;
 
-    // Validación y sanitización
     const cleanUser = sanitize(username);
-    const cleanPass = password.slice(0, MAX_FIELD_LEN); // no sanitizar la contraseña (puede tener símbolos)
+    const cleanPass = password.slice(0, MAX_FIELD_LEN);
 
     if (!cleanUser) {
       setError('El usuario no puede estar vacío.');
@@ -184,61 +182,41 @@ const Login = () => {
     }
   };
 
-  const handleRequestCode = async (e) => {
+  /** Paso 1: solicitar pregunta aleatoria por nombre de usuario */
+  const handleRequestQuestion = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    const cleanEmail = sanitize(email).toLowerCase();
-    if (!cleanEmail || !isValidEmail(cleanEmail)) {
-      setError('Ingresa un correo electrónico válido.');
+    const cleanUser = sanitize(resetUsername);
+    if (!cleanUser) {
+      setError('Ingresa tu nombre de usuario.');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE}/password-reset/request/`, { email: cleanEmail });
-      setSuccess(response.data.message || 'Código enviado con éxito.');
-      setMode('forgot-verify');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Ocurrió un error al solicitar el código.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    // El código solo debe contener dígitos
-    const cleanCode = sanitize(code).replace(/\D/g, '');
-    if (!cleanCode || cleanCode.length !== 6) {
-      setError('El código debe ser exactamente 6 dígitos numéricos.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_BASE}/password-reset/verify/`, {
-        email: sanitize(email).toLowerCase(),
-        code: cleanCode,
-      });
-      setSuccess(response.data.message || 'Código verificado con éxito.');
+      const response = await axios.post(`${API_BASE}/password-reset/question/`, { username: cleanUser });
+      setQuestionKey(response.data.question_key);
+      setQuestionText(response.data.question_text);
       setMode('forgot-reset');
     } catch (err) {
-      setError(err.response?.data?.error || 'Código incorrecto, expirado o inválido.');
+      setError(err.response?.data?.error || 'No se encontró el usuario o no tiene preguntas de seguridad.');
     } finally {
       setLoading(false);
     }
   };
 
+  /** Paso 2: verificar respuesta y cambiar contraseña */
   const handleConfirmReset = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
+    if (!securityAnswer.trim()) {
+      setError('Ingresa tu respuesta de seguridad.');
+      return;
+    }
     if (!newPassword || !confirmNewPassword) {
       setError('Todos los campos son obligatorios.');
       return;
@@ -259,12 +237,13 @@ const Login = () => {
     setLoading(true);
     try {
       const response = await axios.post(`${API_BASE}/password-reset/confirm/`, {
-        email:    sanitize(email).toLowerCase(),
-        code:     sanitize(code).replace(/\D/g, ''),
-        password: newPassword,
+        username:     sanitize(resetUsername),
+        question_key: questionKey,
+        answer:       securityAnswer.trim(),
+        new_password: newPassword,
       });
       setSuccess(response.data.message || 'Contraseña restablecida con éxito.');
-      setCode('');
+      setSecurityAnswer('');
       setNewPassword('');
       setConfirmNewPassword('');
       setMode('login');
@@ -294,10 +273,9 @@ const Login = () => {
             ZenTask
           </h1>
           <p className="text-muted text-sm">
-            {mode === 'login'          && 'Inicia sesión para continuar'}
-            {mode === 'forgot-request' && 'Recupera tu contraseña'}
-            {mode === 'forgot-verify'  && 'Ingresa el código recibido'}
-            {mode === 'forgot-reset'   && 'Establece tu nueva contraseña'}
+            {mode === 'login'           && 'Inicia sesión para continuar'}
+            {mode === 'forgot-question' && 'Recupera tu contraseña'}
+            {mode === 'forgot-reset'    && 'Responde tu pregunta de seguridad'}
           </p>
         </div>
 
@@ -344,7 +322,7 @@ const Login = () => {
                 <label className="form-label" htmlFor="login-password" style={{ marginBottom: 0 }}>Contraseña</label>
                 <button
                   type="button"
-                  onClick={() => { switchMode('forgot-request'); setEmail(''); setCode(''); }}
+                  onClick={() => { switchMode('forgot-question'); setResetUsername(''); }}
                   style={{
                     background: 'none', border: 'none',
                     color: 'var(--color-primary-light)',
@@ -379,68 +357,78 @@ const Login = () => {
           </form>
         )}
 
-        {/* ── Solicitar código ── */}
-        {mode === 'forgot-request' && (
-          <form onSubmit={handleRequestCode} className="modal-form" noValidate>
+        {/* ── Paso 1: Ingresar usuario para obtener pregunta ── */}
+        {mode === 'forgot-question' && (
+          <form onSubmit={handleRequestQuestion} className="modal-form" noValidate>
             <div className="form-group">
-              <label className="form-label" htmlFor="forgot-email">Correo Electrónico</label>
+              <label className="form-label" htmlFor="forgot-username">Nombre de usuario</label>
               <input
-                id="forgot-email"
-                type="email"
-                placeholder="ejemplo@correo.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoComplete="email"
+                id="forgot-username"
+                type="text"
+                placeholder="tu_usuario"
+                value={resetUsername}
+                onChange={e => setResetUsername(e.target.value)}
+                autoComplete="username"
                 maxLength={MAX_FIELD_LEN}
                 required
                 disabled={loading}
               />
             </div>
-            <button type="submit" className="btn btn-primary w-full" style={{ justifyContent: 'center', padding: 'var(--space-4)' }} disabled={loading}>
-              {loading ? 'Enviando...' : 'Enviar código de recuperación'}
+            <button
+              type="submit"
+              className="btn btn-primary w-full"
+              style={{ justifyContent: 'center', padding: 'var(--space-4)' }}
+              disabled={loading}
+            >
+              {loading ? 'Buscando...' : 'Ver mi pregunta de seguridad'}
             </button>
-            <button type="button" className="btn btn-secondary w-full" style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }} onClick={() => switchMode('login')}>
+            <button
+              type="button"
+              className="btn btn-secondary w-full"
+              style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }}
+              onClick={() => switchMode('login')}
+            >
               Volver al inicio de sesión
             </button>
           </form>
         )}
 
-        {/* ── Verificar código ── */}
-        {mode === 'forgot-verify' && (
-          <form onSubmit={handleVerifyCode} className="modal-form" noValidate>
-            <div className="form-group">
-              <label className="form-label" htmlFor="verify-email">Correo Electrónico</label>
-              <input id="verify-email" type="email" value={email} disabled style={{ opacity: 0.6, cursor: 'not-allowed' }} />
+        {/* ── Paso 2: Responder pregunta + nueva contraseña ── */}
+        {mode === 'forgot-reset' && (
+          <form onSubmit={handleConfirmReset} className="modal-form" noValidate>
+            {/* Pregunta mostrada */}
+            <div style={{
+              padding: 'var(--space-4)',
+              borderRadius: 'var(--radius)',
+              background: 'rgba(124,58,237,0.08)',
+              border: '1px solid rgba(124,58,237,0.2)',
+              marginBottom: 'var(--space-4)',
+            }}>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginBottom: 'var(--space-1)' }}>
+                🔐 Pregunta de seguridad
+              </p>
+              <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', margin: 0 }}>
+                {questionText}
+              </p>
             </div>
+
             <div className="form-group">
-              <label className="form-label" htmlFor="confirm-code">Código de 6 dígitos</label>
+              <label className="form-label" htmlFor="security-answer">Tu respuesta</label>
               <input
-                id="confirm-code"
+                id="security-answer"
                 type="text"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                placeholder="123456"
-                maxLength={6}
-                value={code}
-                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Ingresa tu respuesta"
+                value={securityAnswer}
+                onChange={e => setSecurityAnswer(e.target.value)}
+                autoComplete="off"
+                maxLength={MAX_FIELD_LEN}
                 required
                 disabled={loading}
               />
             </div>
-            <button type="submit" className="btn btn-primary w-full" style={{ justifyContent: 'center', padding: 'var(--space-4)' }} disabled={loading}>
-              {loading ? 'Verificando...' : 'Verificar código'}
-            </button>
-            <button type="button" className="btn btn-secondary w-full" style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }} onClick={() => switchMode('forgot-request')}>
-              Volver
-            </button>
-          </form>
-        )}
 
-        {/* ── Nueva contraseña ── */}
-        {mode === 'forgot-reset' && (
-          <form onSubmit={handleConfirmReset} className="modal-form" noValidate>
             <PasswordField
-              id="confirm-password"
+              id="new-password"
               label="Nueva Contraseña"
               placeholder="••••••••"
               value={newPassword}
@@ -451,7 +439,7 @@ const Login = () => {
               showStrength
             />
             <PasswordField
-              id="confirm-password-repeat"
+              id="new-password-confirm"
               label="Confirmar Nueva Contraseña"
               placeholder="••••••••"
               value={confirmNewPassword}
@@ -460,10 +448,21 @@ const Login = () => {
               required
               disabled={loading}
             />
-            <button type="submit" className="btn btn-primary w-full" style={{ justifyContent: 'center', padding: 'var(--space-4)' }} disabled={loading}>
+
+            <button
+              type="submit"
+              className="btn btn-primary w-full"
+              style={{ justifyContent: 'center', padding: 'var(--space-4)' }}
+              disabled={loading}
+            >
               {loading ? 'Restableciendo...' : 'Restablecer contraseña'}
             </button>
-            <button type="button" className="btn btn-secondary w-full" style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }} onClick={() => switchMode('forgot-verify')}>
+            <button
+              type="button"
+              className="btn btn-secondary w-full"
+              style={{ justifyContent: 'center', padding: 'var(--space-4)', marginTop: 'var(--space-2)' }}
+              onClick={() => switchMode('forgot-question')}
+            >
               Volver
             </button>
           </form>
