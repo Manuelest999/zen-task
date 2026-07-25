@@ -549,7 +549,7 @@ input:focus, select:focus, textarea:focus {
 
 /* ── Loading State ── */
 .loading-center {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
