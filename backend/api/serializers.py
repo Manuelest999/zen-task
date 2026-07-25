@@ -32,7 +32,18 @@ class UserSerializer(serializers.ModelSerializer):
         # Las 3 preguntas deben ser distintas
         qs = [data.get('question_1'), data.get('question_2'), data.get('question_3')]
         if len(set(qs)) != 3:
-            raise serializers.ValidationError('Las 3 preguntas de seguridad deben ser diferentes.')
+            raise serializers.ValidationError({'questions': 'Las 3 preguntas de seguridad deben ser diferentes.'})
+
+        # Validar dominio de correo vía DNS
+        email = data.get('email')
+        if email:
+            import socket
+            domain = email.split('@')[-1]
+            try:
+                socket.getaddrinfo(domain, None)
+            except socket.gaierror:
+                raise serializers.ValidationError({'email': f"El dominio de correo '@{domain}' no existe o es inválido."})
+
         return data
 
     def create(self, validated_data):
